@@ -18,13 +18,20 @@ def MakeDir(nameDir):
     except:
         pass
 
-client = Client("SCEDC")
+client_list = ["IRIS", "SCEDC"]
+
+# Use IRIS by default
+client = Client(client_list[0])
+
+inv = client.get_stations(network='SN', station='L3*', level='channel',
+                          starttime=UTCDateTime(2015, 1, 1),
+                          endtime=UTCDateTime(2017, 1, 1),
+                          includeavailability=True)
 
 
 direc = '/Volumes/Gdrive/SPE/data'
 year = 2016
-dy = ["%.3d" % i for i in range(92, 93)]
-
+dy = ["%.3d" % i for i in range(200,201)]
 
 
 for day in dy:
@@ -32,7 +39,8 @@ for day in dy:
     t1 = UTCDateTime(str(year) + day + "T000000.0")
     t2 = UTCDateTime(str(year) + day + "T235959.999999")
     inv = client.get_stations(network='SN', station='L3*', level='channel',
-                              starttime=t1, endtime=t2)
+                              starttime=t1, endtime=t2,
+                              includeavailability=True)
 
     print(inv)
     dir1 = direc + os.sep + str(year) + "/Event_" + str(year) + "_" + day
@@ -45,32 +53,34 @@ for day in dy:
                              + "." + str(chan.code) + '.sac'
 
                 if os.path.exists(fname)==False:
-                    try:
-                        st = client.get_waveforms(network=K.code,
-                                                  station=sta.code,
-                                                  channel=chan.code,
-                                                  location='*', starttime=t1,
-                                                  endtime=t1+24*3600-.005)
-                        st.detrend(type='constant')
-                        st.detrend(type='linear')
-                        st.filter("bandpass", freqmin=0.01, freqmax = 24,
-                                  zerophase=True)
-                        st.detrend(type='constant')
-                        st.detrend(type='linear')
-                        if len(st)>=1:
-                            st.merge(method=1,fill_value=0)
-                        print(st)
+                    for cl_name in client_list:
+                        client = Client(cl_name)
+                        try:
+                            st = client.get_waveforms(network=K.code,
+                                                      station=sta.code,
+                                                      channel=chan.code,
+                                                      location='*', starttime=t1,
+                                                      endtime=t1+24*3600-.005)
+                            st.detrend(type='constant')
+                            st.detrend(type='linear')
+                            st.filter("bandpass", freqmin=0.01, freqmax = 24,
+                                      zerophase=True)
+                            st.detrend(type='constant')
+                            st.detrend(type='linear')
+                            if len(st)>=1:
+                                st.merge(method=1,fill_value=0)
+                            print(st)
 
 
-                        if st[0].stats.sampling_rate==500:
-                            st[0].decimate(5)
-                            st[0].decimate(2)
-                        elif st[0].stats.sampling_rate==200:
-                            st[0].decimate(4)
-                        elif st[0].stats.sampling_rate==100:
-                            st[0].decimate(2)
+                            if st[0].stats.sampling_rate==500:
+                                st[0].decimate(5)
+                                st[0].decimate(2)
+                            elif st[0].stats.sampling_rate==200:
+                                st[0].decimate(4)
+                            elif st[0].stats.sampling_rate==100:
+                                st[0].decimate(2)
 
-                        st.write(fname, format='sac')
+                            st.write(fname, format='sac')
 
-                    except:
-                        pass
+                        except:
+                            pass
